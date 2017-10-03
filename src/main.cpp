@@ -6,6 +6,7 @@
 #include <vector>
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
+#include "Eigen-3.3/Eigen/Geometry"
 #include "MPC.h"
 #include "json.hpp"
 
@@ -90,6 +91,7 @@ int main() {
           double px = j[1]["x"];
           double py = j[1]["y"];
           double psi = j[1]["psi"];
+          double psi_unity = j[1]["psi_unity"];
           double v = j[1]["speed"];
 
           /*
@@ -98,16 +100,52 @@ int main() {
           * Both are in between [-1, 1].
           *
           */
+
+          json msgJson;
+
+          // These (x,y) points are displayed in reference to the vehicle's coordinate system.
+          // Recall that the x axis always points in the direction of the car’s heading and
+          // the y axis points to the left of the car. So if you wanted to display a point 10 units
+          // directly in front of the car, you could set next_x = {10.0} and next_y = {0.0}.
+
+          int len = ptsx.size();
+
+          Eigen::Map<Eigen::VectorXd> ptsx_v(ptsx.data(), len);
+          Eigen::Map<Eigen::VectorXd> ptsy_v(ptsy.data(), len);
+
+          ptsx_v = ptsx_v - px * Eigen::VectorXd::Ones(len);
+          ptsy_v = ptsy_v - py * Eigen::VectorXd::Ones(len);
+
+          Eigen::MatrixXd waypoints(len, 2);
+          waypoints << ptsx_v, ptsy_v;
+
+        //   std::cout << waypoints << std::endl;
+
+          Eigen::Rotation2D<double> rotation(-psi);
+
+          Eigen::MatrixXd waypoints_r = rotation.toRotationMatrix() * waypoints.transpose();
+
+          //Display the waypoints/reference line
+          vector<double> next_x_vals(len);
+          vector<double> next_y_vals(len);
+
+          Eigen::VectorXd::Map(&next_x_vals[0], len) = waypoints_r.row(0);
+          Eigen::VectorXd::Map(&next_y_vals[0], len) = waypoints_r.row(1);
+
+          //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
+          // the points in the simulator are connected by a Yellow line
+          msgJson["next_x"] = next_x_vals;
+          msgJson["next_y"] = next_y_vals;
+
           double steer_value;
           double throttle_value;
 
-          json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
           msgJson["steering_angle"] = steer_value;
           msgJson["throttle"] = throttle_value;
 
-          //Display the MPC predicted trajectory 
+          //Display the MPC predicted trajectory
           vector<double> mpc_x_vals;
           vector<double> mpc_y_vals;
 
@@ -117,15 +155,11 @@ int main() {
           msgJson["mpc_x"] = mpc_x_vals;
           msgJson["mpc_y"] = mpc_y_vals;
 
-          //Display the waypoints/reference line
-          vector<double> next_x_vals;
-          vector<double> next_y_vals;
-
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
-
-          msgJson["next_x"] = next_x_vals;
-          msgJson["next_y"] = next_y_vals;
+          //
+        //   msgJson["next_x"] = next_x_vals;
+        //   msgJson["next_y"] = next_y_vals;
 
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
