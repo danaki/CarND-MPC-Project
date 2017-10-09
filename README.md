@@ -29,8 +29,8 @@ The model is defined as below:
 
 where index '0' defines state and actuations at timestamp t, and '1' at timestamp t + 1.
 
-dt and N are empiricaly defined as 0.2 and 10, where N is the number of future steps to predict, dt is the resolution.
-Given 10 and 0.2 his gives prediction horizon 10 * 0.2 = 2 sec. I tried different combinations of both N and dt like (N=20, dt is 0.1 or 0.05), but this makes model act unstable causing car go off the road. Basically smaller dt gives better resolution, but given 100ms latency of actuators, the result is not close enough to practice. Bigger dt reduces the resolution and model becomes less precise. Bigger N makes sense only on higher speeds when it's crucial not to slip through the turn.
+dt and N are empiricaly defined as 0.25 and 10, where N is the number of future steps to predict, dt is the resolution.
+Given 10 * 0.25 defines prediction horizon. I tried different combinations of both N and dt like (N=20, dt=0.2, 0.1 or 0.05), but this makes model act unstable causing car go off the road. Basically smaller dt gives better resolution, but given latency of actuators, the result is not close enough to practice. Bigger dt reduces the resolution and model becomes less precise. Bigger N makes sense only on higher speeds when it's crucial not to slip through the turn.
 
 Because waypoints are given in global coordinates some matrix affine transformations were required before fitting the polynomial:
 ```
@@ -52,7 +52,20 @@ Because waypoints are given in global coordinates some matrix affine transformat
   auto coeffs = polyfit(waypoints_r.row(0), waypoints_r.row(1), 3);
 ```
 
-Chosen timestamp interval dt=0.2 is two times bigger than the latency 100ms, so the actuation latency is incorporated into the model. Cost function is also altered and penalization of cte (1000) and epsi (1000) added.
+To mitigate the latency problem, we simulate state after 100 ms given current velocity and throttle:
+
+```
+  double latency = 0.1;
+  
+  state << v * cos(-psi) * latency,
+    0,
+    v * (-delta) * latency / Lf,
+    v + a * latency,
+    cte,
+    epsi;
+```
+
+Here `v` is the current speed in kmh and `a` is the throttle defined in bounds [-1; 1]
 
 
 ---
