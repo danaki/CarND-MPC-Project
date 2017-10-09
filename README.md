@@ -1,6 +1,60 @@
 # CarND-Controls-MPC
 Self-Driving Car Engineer Nanodegree Program
 
+## Rubric Points
+
+### Model
+
+The kinematic model combines the state and actuations from the previous timestep to calculate the curent state. The state parameters are defined like so:
+ * `x` is position x
+ * `y` is position y
+ * `psi` is orientation angle
+ * `v` is speed
+ * `epsi` is error for psi 
+ * `cte` is cross track error
+
+The actuations given:
+ * `delta` is steering angle
+ * `a` is acceleration
+
+The model is defined as below:
+```
+  x = x1 - (x0 + v0 * cos(psi0) * dt);
+  y = y1 - (y0 + v0 * sin(psi0) * dt);
+  psi = psi1 - (psi0 + v0 * delta0 / Lf * dt);
+  v = v1 - (v0 + a0 * dt);
+  cte = cte1 - ((f0 - y0) + (v0 * sin(epsi0) * dt));
+  epsi = epsi1 - ((psi0 - psides0) + v0 * delta0 / Lf * dt);
+```
+
+where index '0' defines state and actuations at timestamp t, and '1' at timestamp t + 1.
+
+dt and N are empiricaly defined as 0.2 and 10, where N is the number of future steps to predict, dt is the resolution.
+Given 10 and 0.2 his gives prediction horizon 10 * 0.2 = 2 sec. I tried different combinations of both N and dt like (N=20, dt is 0.1 or 0.05), but this makes model act unstable causing car go off the road. Basically smaller dt gives better resolution, but given 100ms latency of actuators, the result is not close enough to practice. Bigger dt reduces the resolution and model becomes less precise. Bigger N makes sense only on higher speeds when it's crucial not to slip through the turn.
+
+Because waypoints are given in global coordinates some matrix affine transformations were required before fitting the polynomial:
+```
+  auto len = ptsx.size();
+
+  Eigen::Map<Eigen::VectorXd> ptsx_v(ptsx.data(), len);
+  Eigen::Map<Eigen::VectorXd> ptsy_v(ptsy.data(), len);
+
+  ptsx_v = ptsx_v - px * Eigen::VectorXd::Ones(len);
+  ptsy_v = ptsy_v - py * Eigen::VectorXd::Ones(len);
+
+  Eigen::MatrixXd waypoints(len, 2);
+  waypoints << ptsx_v, ptsy_v;
+
+  Eigen::Rotation2D<double> rotation(-psi);
+
+  Eigen::MatrixXd waypoints_r = rotation.toRotationMatrix() * waypoints.transpose();
+
+  auto coeffs = polyfit(waypoints_r.row(0), waypoints_r.row(1), 3);
+```
+
+Chosen timestamp interval dt=0.2 is two times bigger than the latency 100ms, so the actuation latency is incorporated into the model. Cost function is also altered and penalization of cte (1000) and epsi (1000) added.
+
+
 ---
 
 ## Dependencies
