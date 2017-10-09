@@ -7,7 +7,7 @@ using CppAD::AD;
 
 // working combination: 10, 0.2, 1000, 1000, 1, 1, 1, 1, 1
 size_t N = 10;
-double dt = 0.20;
+double dt = 0.25;
 int cte_factor = 1000;
 int epsi_factor = 1000;
 int v_factor = 1;
@@ -16,18 +16,6 @@ int current_a_factor = 1;
 int diff_delta_factor = 1;
 int diff_a_factor = 1;
 
-
-// This value assumes the model presented in the classroom is used.
-//
-// It was obtained by measuring the radius formed by running the vehicle in the
-// simulator around in a circle with a constant steering angle and velocity on a
-// flat terrain.
-//
-// Lf was tuned until the the radius formed by the simulating the model
-// presented in the classroom matched the previous radius.
-//
-// This is the length from front to CoG that has a similar radius.
-const double Lf = 2.67;
 
 // Both the reference cross track and orientation errors are 0.
 // The reference velocity is set to 40 mph.
@@ -145,7 +133,6 @@ MPC::~MPC() {}
 
 vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   bool ok = true;
-  size_t i;
   typedef CPPAD_TESTVECTOR(double) Dvector;
 
   double x = state[0];

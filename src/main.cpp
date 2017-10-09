@@ -85,14 +85,19 @@ int main() {
         auto j = json::parse(s);
         string event = j[0].get<string>();
         if (event == "telemetry") {
+          std::cout << "IN: " << j[1] << std::endl;
+
           // j[1] is the data JSON object
+          // https://github.com/udacity/CarND-MPC-Project/blob/master/DATA.md
           vector<double> ptsx = j[1]["ptsx"];
           vector<double> ptsy = j[1]["ptsy"];
           double px = j[1]["x"];
           double py = j[1]["y"];
-          double psi = j[1]["psi"];
+          double psi = j[1]["psi"]; // radians
           double psi_unity = j[1]["psi_unity"];
-          double v = j[1]["speed"];
+          double v = ((double) j[1]["speed"]) * 0.44704; // speed in mph
+          double a = j[1]["throttle"]; // [-1, 1]
+          double delta = j[1]["steering_angle"]; // radians
 
           /*
           * TODO: Calculate steering angle and throttle using MPC.
@@ -128,11 +133,17 @@ int main() {
           auto epsi = atan(coeffs[1]);
 
           Eigen::VectorXd state(6);
-          state << 0, 0, 0, v, cte, epsi;
+
+          double latency = 0.1; // 0.1 = 100 ms
+
+          state << v * cos(-psi) * latency,
+            0,
+            v * (-delta) * latency / Lf,
+            v + a * latency,
+            cte,
+            epsi;
 
           auto result = mpc.Solve(state, coeffs);
-
-          std::cout << result[0] << result[1] << std::endl;
 
           // Display the waypoints/reference line
           vector<double> next_x_vals(len);
@@ -165,7 +176,7 @@ int main() {
           msgJson["mpc_y"] = mpc_y_vals;
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
+          std::cout << "OUT: " << msg << std::endl;
           // Latency
           // The purpose is to mimic real driving conditions where
           // the car does actuate the commands instantly.
@@ -175,7 +186,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(100));
+          this_thread::sleep_for(chrono::milliseconds((int) latency * 1000));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {
