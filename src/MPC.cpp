@@ -99,14 +99,6 @@ class FG_eval {
 
     // The rest of the constraints
     for (int i = 0; i < N - 1; i++) {
-      // The state at time t+1 .
-      AD<double> x1 = vars[x_start + i + 1];
-      AD<double> y1 = vars[y_start + i + 1];
-      AD<double> psi1 = vars[psi_start + i + 1];
-      AD<double> v1 = vars[v_start + i + 1];
-      AD<double> cte1 = vars[cte_start + i + 1];
-      AD<double> epsi1 = vars[epsi_start + i + 1];
-
       // The state at time t.
       AD<double> x0 = vars[x_start + i];
       AD<double> y0 = vars[y_start + i];
@@ -115,12 +107,20 @@ class FG_eval {
       AD<double> cte0 = vars[cte_start + i];
       AD<double> epsi0 = vars[epsi_start + i];
 
+      // The state at time t + 1 .
+      AD<double> x1 = vars[x_start + i + 1];
+      AD<double> y1 = vars[y_start + i + 1];
+      AD<double> psi1 = vars[psi_start + i + 1];
+      AD<double> v1 = vars[v_start + i + 1];
+      AD<double> cte1 = vars[cte_start + i + 1];
+      AD<double> epsi1 = vars[epsi_start + i + 1];
+
       // Only consider the actuation at time t.
       AD<double> delta0 = vars[delta_start + i];
       AD<double> a0 = vars[a_start + i];
 
-      AD<double> f0 = coeffs[0] + coeffs[1] * x0 + coeffs[2] * x0 * x0 + coeffs[3] * x0 * x0 * x0;
-      AD<double> psides0 = CppAD::atan(3 * coeffs[3] * x0 * x0 + 2 * coeffs[2] * x0 + coeffs[1]);
+      AD<double> f0 = coeffs[0] + coeffs[1] * x0 + coeffs[2] * CppAD::pow(x0, 2) + coeffs[3] * CppAD::pow(x0, 3);
+      AD<double> psides0 = CppAD::atan(3 * coeffs[3] * CppAD::pow(x0, 2) + 2 * coeffs[2] * x0 + coeffs[1]);
 
       // Here's `x` to get you started.
       // The idea here is to constraint this value to be 0.
